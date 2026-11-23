@@ -3,12 +3,94 @@ package mn.edu.must.sqat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class GradeCalculatorTest {
+
+    @ParameterizedTest(name = "{0} оноо → {1}")
+    @DisplayName("Үсгэн дүн солигдох бүх заагийг шалгана")
+    @CsvSource({"90,A", "89.99,B", "80,B", "79.99,C", "70,C",
+            "69.99,D", "60,D", "59.99,F", "0,F", "100,A"})
+    void letterGradeBoundaries(double score, String expected) {
+        // Arrange
+        GradeCalculator calc = new GradeCalculator();
+        // Act
+        String actual = calc.letterGrade(score);
+        // Assert
+        assertEquals(expected, actual);
+    }
+
+    @ParameterizedTest
+    @DisplayName("Зөвшөөрөгдөх оноонуудын нийлбэр зөв байна")
+    @CsvSource({
+            "0,0,0,0,0,0",
+            "10,40,10,10,30,100",
+            "8,32,7,9,24,80",
+            "9.5,35.5,8.5,9,27.5,90",
+            "0.1,0.2,0.3,0.4,0.5,1.5"
+    })
+    void totalScoreForValidComponents(double att, double lab, double quiz1,
+                                      double quiz2, double exam, double expected) {
+        // Arrange
+        GradeCalculator calc = new GradeCalculator();
+        // Act
+        double actual = calc.totalScore(att, lab, quiz1, quiz2, exam);
+        // Assert
+        assertEquals(expected, actual, 0.000001);
+    }
+
+    @ParameterizedTest
+    @DisplayName("Хэсэг бүрийн сөрөг болон хэтэрсэн оноог хориглоно")
+    @CsvSource({
+            "-0.01,20,5,5,15", "10.01,20,5,5,15",
+            "5,-0.01,5,5,15", "5,40.01,5,5,15",
+            "5,20,-0.01,5,15", "5,20,10.01,5,15",
+            "5,20,5,-0.01,15", "5,20,5,10.01,15",
+            "5,20,5,5,-0.01", "5,20,5,5,30.01"
+    })
+    void invalidComponentScoresAreRejected(double att, double lab, double quiz1,
+                                            double quiz2, double exam) {
+        // Arrange
+        GradeCalculator calc = new GradeCalculator();
+        // Act
+        Executable action = () -> calc.totalScore(att, lab, quiz1, quiz2, exam);
+        // Assert
+        assertThrows(IllegalArgumentException.class, action);
+    }
+
+    @ParameterizedTest
+    @DisplayName("NaN болон хязгааргүй утга үсгэн дүн болохгүй")
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void nonFiniteLetterScoresAreRejected(double score) {
+        // Arrange
+        GradeCalculator calc = new GradeCalculator();
+        // Act
+        Executable action = () -> calc.letterGrade(score);
+        // Assert
+        assertThrows(IllegalArgumentException.class, action);
+    }
+
+    @ParameterizedTest
+    @DisplayName("Хэсгийн оноо NaN эсвэл хязгааргүй байж болохгүй")
+    @CsvSource({
+            "NaN,20,5,5,15", "5,NaN,5,5,15", "5,20,NaN,5,15",
+            "5,20,5,Infinity,15", "5,20,5,5,-Infinity"
+    })
+    void nonFiniteComponentsAreRejected(double att, double lab, double quiz1,
+                                        double quiz2, double exam) {
+        // Arrange
+        GradeCalculator calc = new GradeCalculator();
+        // Act
+        Executable action = () -> calc.totalScore(att, lab, quiz1, quiz2, exam);
+        // Assert
+        assertThrows(IllegalArgumentException.class, action);
+    }
 
     @Test
     @DisplayName("Ердийн оноонууд A, B, C, D, F дүнтэй таарна")
